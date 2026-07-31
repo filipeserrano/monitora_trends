@@ -353,10 +353,13 @@ ucs_list = data.frame(use = c(rep("Integral_use", 5), rep("Sustainable_use", 7))
                 "Reserva Extrativista Do Rio Do Cautario"= "Reserva Extrativista Do Rio Do Cautário"
                 )) %>% 
   dplyr::left_join(uc_BR, by = "NAME") %>% 
-  dplyr::rename(area_uc = "REP_AREA.y") %>% 
-  dplyr::select(use, protected_area, area_uc) %>% 
-  dplyr::mutate(log_area_uc = log(area_uc))
+  dplyr::rename(area_uc = "REP_AREA.y")
   
+
+monitora_db_use = monitora_db %>% 
+  dplyr::left_join(ucs_list, by = c("Location of Population" = "protected_area"))
+
+
 # biomes
 sf_use_s2(F)
 # biomas = geobr::read_biomes(year = 2019, simplified = T, cache = T,output = "sf") %>%  #lendo a base de biomas do pacote geobr
@@ -365,8 +368,11 @@ sf_use_s2(F)
 
 biomas = st_read("Biomas_250mil/lm_bioma_250.shp") %>% 
   dplyr::rename(code_biome = CD_Bioma,
-                name_biome = Bioma)
- 
+                name_biome = Bioma) %>% 
+  dplyr::mutate(name_biome2 = case_when(name_biome == "Mata Atlântica" ~ "Atlantic Forest",
+                                               name_biome == "Amazônia" ~ "Amazonia",
+                                               TRUE ~ name_biome))
+                
 
 
 lpi_all2 = lpi_all %>% 
@@ -641,7 +647,7 @@ ggsave("results/map_monitora_Aves.jpeg")
     geom_sf(data = biomas, aes(fill = name_biome), color = "black", alpha = 0.25) +
     scale_fill_manual(
       values = biome_colors,
-      breaks = c("Amazônia", "Mata Atlântica", "Cerrado"), 
+      breaks = c("Amazonia", "Atlantic Forest", "Cerrado"), 
       na.value = "lightgrey",                             
       name = "Biome"
     ) +
@@ -893,7 +899,7 @@ ggcoef_model(mod_hunt, signif_stars = FALSE,
                              "huntNon_hunted" = "Non-hunted",
                              "threatenedThreatened" = "Threatened",
                              "name_biomeCerrado" = "Cerrado",
-                             "name_biomeMata Atlântica" = "Mata Atlântica",
+                             "name_biomeMata Atlântica" = "Atlantic Forest",
                              "useIntegral_use" = "Integral use",
                              "useSustainable_use" = "Sustainable use"),
              include = !contains(c("Residual.sd","Binomial.sd__(Intercept)","coordinates.sd__(Intercept)"))) +
@@ -1116,15 +1122,6 @@ write.table(monitora_lpi_aves_infile, paste0(dirname(dirname(getwd())), "/Monito
 monitora_lpi_aves_analysis = LPIMain("monitora_lpi_aves_infile.txt", "TRENDS", REF_YEAR=2014,PLOT_MAX=2025,SHOW_PROGRESS = TRUE)
 
 
-monitora_lpi_lepidoptera_infile = data.frame("monitora_lpi_lepidoptera.txt", 1, 1) %>%
-  rename("FileName" = 1,
-         "Group" = 2,
-         "Weighting" = 3)
-
-write.table(monitora_lpi_lepidoptera_infile, paste0(dirname(dirname(getwd())), "/Monitora - Consultoria - privado/data/monitora_lpi_lepidoptera_infile.txt"), row.names = F, quote = T, sep="\t")
-
-monitora_lpi_lepidoptera_analysis = LPIMain("monitora_lpi_lepidoptera_infile.txt", "TRENDS", REF_YEAR=2018,PLOT_MAX=2025,SHOW_PROGRESS = TRUE,GAM_GLOBAL_FLAG = 0)
-
 
 monitora_lpi_mammalia_infile = data.frame("monitora_lpi_mammalia.txt", 1, 1) %>%
   rename("FileName" = 1,
@@ -1156,15 +1153,10 @@ fills <-c("tan4","lightgoldenrod2")
 ggsave("results/lpi_monitora_group.jpeg", height = 7, width = 10)
 
 
-
-
-
  #### threat status ####
 
 # check categoria de ameaça de espécies abaixo
 monitora_db_threat = monitora_db %>% 
-  dplyr::left_join(bind_rows(MMA_birdsmammals, MMA_butterflies) %>% 
-                               dplyr::select(especie),by = c("Binomial" = "especie")) %>% 
   dplyr::filter(!is.na(categoria)) %>% 
   dplyr::mutate(threatened = if_else(categoria %in% c("Menos Preocupante", "Quase Ameaçada"), 
                                      "Non-threatened",
@@ -1224,6 +1216,51 @@ fills_threat <-c("darkblue","darkred")
 ggsave("results/lpi_monitora_threat_weighted.jpeg", height = 7, width = 10)
 
 
+### PA use ####
+
+
+monitora_lpi_integral = prepare_monitora_lpi(monitora_db_use, use, "Integral_use", "monitora_lpi_integral.txt")
+
+
+monitora_lpi_integral_infile = data.frame("monitora_lpi_integral.txt", 1, 1) %>%
+  rename("FileName" = 1,
+         "Group" = 2,
+         "Weighting" = 3)
+
+write.table(monitora_lpi_integral_infile, paste0(dirname(dirname(getwd())), "/Monitora - Consultoria - privado/data/TRENDS/monitora_lpi_integral_infile.txt"), row.names = F, quote = T, sep="\t")
+
+monitora_lpi_integral_analysis = LPIMain("monitora_lpi_integral_infile.txt", "TRENDS", REF_YEAR=2014,PLOT_MAX=2025,SHOW_PROGRESS = TRUE)
+
+
+monitora_lpi_sustainable = prepare_monitora_lpi(monitora_db_use, use, "Sustainable_use", "monitora_lpi_sustainable.txt")
+
+monitora_lpi_sustainable_infile = data.frame("monitora_lpi_sustainable.txt", 1, 1) %>%
+  rename("FileName" = 1,
+         "Group" = 2,
+         "Weighting" = 3)
+
+write.table(monitora_lpi_sustainable_infile, paste0(dirname(dirname(getwd())), "/Monitora - Consultoria - privado/data/monitora_lpi_sustainable_infile.txt"), row.names = F, quote = T, sep="\t")
+
+monitora_lpi_sustainable_infile = LPIMain("monitora_lpi_sustainable_infile.txt", "TRENDS", REF_YEAR=2014,PLOT_MAX=2025,SHOW_PROGRESS = TRUE)
+
+lpis_use <- list(monitora_lpi_sustainable_infile,monitora_lpi_integral_analysis)
+
+fills_use <-c("rosybrown3", "mediumpurple3")
+(lpi_use = ggplot_multi_lpi(lpis_use, xlims=c(2014, 2025), ylims=c(0, 2),names=c("Sustainable use", "Integral protection"), 
+                               facet = T, lpi_breaks = 0.5, yrbreaks = 10) +
+    theme_classic(base_size = 13)  + theme(legend.position="none",
+                                           legend.text = element_text(size=12),
+                                           legend.title= element_blank(),
+                                           panel.border = element_rect(colour = "black", fill = NA),
+                                           text = element_text(size = 11),
+                                           strip.text.x = element_text(size = 13),
+                                           panel.spacing.x = unit(1.1, "lines")) + 
+    scale_colour_manual(values=fills_use) + scale_fill_manual(values=fills_use)+ 
+    labs(y = "") +
+    scale_x_continuous(breaks = c(2014 ,2019, 2025)))
+
+## final figure
+
 combined_lpi =   (lpi_group / lpi_threat / lpi_hunt / lpi_protocol)
 
 (combined_lpi_monitora = combined_lpi + 
@@ -1238,13 +1275,13 @@ combined_lpi =   (lpi_group / lpi_threat / lpi_hunt / lpi_protocol)
 ggsave("results/lpi_monitora_all.jpeg", height = 7, width = 12)
 
 
-right_grid = (lpi_group + lpi_threat + lpi_hunt + lpi_protocol) + 
-  plot_layout(ncol = 2, nrow = 2)
-
-combined_lpi = lpi_sum | right_grid
-
-(combined_lpi_monitora = combined_lpi + 
-  plot_layout(widths = c(1, 1.8), guides = "keep") +  # heights = 1 (top) vs 2 (bottom)
+(combined_lpi_monitora2 = (lpi_sum + lpi_group + lpi_threat + 
+                            lpi_hunt  + lpi_use + lpi_protocol) + 
+  plot_layout(
+    ncol = 3, 
+    nrow = 2,
+    guides = "keep" # or "collect" to combine duplicate legends
+  ) + 
   plot_annotation(tag_levels = 'A') & 
   theme(
     plot.tag.position = c(0, 1),
@@ -1252,7 +1289,9 @@ combined_lpi = lpi_sum | right_grid
     legend.position = "none"
   ))
 
-ggsave("results/lpi_monitora_all.jpeg", height = 7, width = 12)
+
+
+ggsave("results/lpi_monitora_all2.jpeg", height = 7, width = 12)
 
 
 ##### ecosystem functions ####
