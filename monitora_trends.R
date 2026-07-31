@@ -578,18 +578,18 @@ write.table(dados.final, "monitora_lpi_SPATIAL_UC_BIOME_FUNC_WEIGHT.csv", sep = 
 
 ### Mapping ####
 biome_colors = c(
-  "Amazônia"       = "darkolivegreen4",
-  "Mata Atlântica" = "darkgreen",
+  "Amazonia"       = "darkolivegreen4",
+  "Atlantic Forest" = "darkgreen",
   "Cerrado"        = "tan"
 )
 
 
 
 (map_birds = ggplot() +
-    geom_sf(data = biomas, aes(fill = name_biome), color = "black", alpha = 0.25) +
+    geom_sf(data = biomas, aes(fill = name_biome2), color = "black", alpha = 0.25) +
     scale_fill_manual(
       values = biome_colors,
-      breaks = c("Amazônia", "Mata Atlântica", "Cerrado"), 
+      breaks = c("Amazonia", "Atlantic Forest", "Cerrado"), 
       na.value = "lightgrey",                             
       name = "Biome"
     ) +
@@ -644,7 +644,7 @@ biome_colors = c(
 ggsave("results/map_monitora_Aves.jpeg")
 
 (map_mammals = ggplot() +
-    geom_sf(data = biomas, aes(fill = name_biome), color = "black", alpha = 0.25) +
+    geom_sf(data = biomas, aes(fill = name_biome2), color = "black", alpha = 0.25) +
     scale_fill_manual(
       values = biome_colors,
       breaks = c("Amazonia", "Atlantic Forest", "Cerrado"), 
